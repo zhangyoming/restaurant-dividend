@@ -1,0 +1,67 @@
+deptservice
+//
+DeptService 部门业务接口，
+定义了部门的创建、更新、删除、查询、批量查询、条件筛选、
+转 Map、查询子部门、查询负责人部门、从缓存获取子部门 ID、
+校验部门有效性等能力。
+\\导入的类是什么意思？
+1. CollectionUtils
+import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
+这是芋道封装的集合工具类。
+这里用在：
+return CollectionUtils.convertMap(list, DeptDO::getId);
+作用是：
+把 List 转成 Map。
+比如：
+List<DeptDO>
+    ↓
+Map<Long, DeptDO>
+key 是部门 id，value 是部门对象。
+//获得部门 Map
+  default Map<Long, DeptDO> getDeptMap(Collection<Long> ids) {
+      List<DeptDO> list = getDeptList(ids);
+      return CollectionUtils.convertMap(list, DeptDO::getId);
+  }
+  这是一个 接口默认方法。
+  它不是只声明方法，而是已经写了默认实现。
+//获得指定部门的所有子部门：单个 ID
+  default List<DeptDO> getChildDeptList(Long id) {
+      return getChildDeptList(Collections.singleton(id));
+  }
+  这个也是默认方法。
+  它的作用是：
+  查询某个部门下面的所有子部门。
+  比如：
+  总部
+    ├── 财务部
+    ├── 技术部
+    └── 运营部
+  调用：
+  getChildDeptList(总部id);
+  应该返回：
+  财务部
+  技术部
+  运营部
+  它内部调用了另一个方法：
+  getChildDeptList(Collections.singleton(id));
+  Collections.singleton(id) 是什么意思？
+  Collections.singleton(id)
+  意思是：
+  创建一个只包含 id 的集合。
+  比如：
+  Collections.singleton(1L)
+  结果类似：
+  [1]
+  为什么这么做？
+  因为真正的核心方法是：
+  List<DeptDO> getChildDeptList(Collection<Long> ids);
+  它支持一次查多个部门的子部门。
+  所以单个 ID 的方法只是一个简化版。
+//
+从缓存中获得所有子部门 ID
+为什么从缓存中获取？
+因为部门树经常被数据权限使用。
+比如：
+某个用户可以看本部门及子部门的数据
+每次都查数据库会比较慢，所以可以缓存部门树。
+

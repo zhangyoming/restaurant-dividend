@@ -1,0 +1,135 @@
+这个 Mapper 体现了什么开发风格？
+
+这个 Mapper 体现的是芋道 / MyBatis-Plus 常见写法：
+
+1. 简单 CRUD 继承 BaseMapperX
+2. 简单条件查询用 default 方法封装
+3. 查询条件用 LambdaQueryWrapperX 拼接
+4. 简单 SQL 可以直接用 @Update
+5. Service 负责业务判断，Mapper 负责数据库操作
+
+DictTypeMapper，负责字典类型表 system_dict_type 的数据库操作。
+它继承 BaseMapperX 获得通用 CRUD 能力，
+用 LambdaQueryWrapperX 拼接分页查询条件，
+用 selectOne 根据 type 或 name 查询单条数据，
+用 @Update 实现逻辑删除。
+
+DictDataMapper，负责字典数据表的数据库操作。
+它通过 BaseMapperX 获得通用 CRUD 能力，
+通过 selectByDictTypeAndValue、selectByDictTypeAndLabel、selectByDictTypeAndValues、selectCountByDictType 等方法封装常用查询，
+通过 LambdaQueryWrapperX 实现分页和条件查询。
+
+而mybatis 通过namespace 对应 Mapper 接口
+如<mapper namespace="cn.iocoder.yudao.module.system.dal.mysql.dict.DictTypeMapper">
+resultType 对应返回的 Java 类
+resultType="cn.iocoder.yudao.module.system.dal.dataobject.dict.DictTypeDO"
+意思是：
+查询结果封装成 DictTypeDO 对象。来对应数据库表与数据库实体类
+//
+MyBatis 注解式 SQL 如果数据库字段和 Java 字段一致，就可以自动映射
+
+
+
+Mapper = 数据库访问层
+BaseMapperX = 芋道封装的通用 Mapper
+LambdaQueryWrapperX = 条件查询构造器
+likeIfPresent = 有值才模糊查询
+eqIfPresent = 有值才等值查询
+betweenIfPresent = 有值才范围查询
+@Update = 直接写 SQL 更新语句
+@Param = 给 SQL 里的参数绑定名字
+
+ IfPresent 的意思就是：
+
+ 参数有值才拼 SQL 条件
+ 参数为空就忽略
+
+//extends BaseMapperX<DictTypeDO> 是什么意思？
+public interface DictTypeMapper extends BaseMapperX<DictTypeDO>
+
+这表示：
+
+DictTypeMapper 继承了芋道封装的通用 Mapper。
+BaseMapperX 应该是芋道在 MyBatis-Plus 基础上封装的增强版 Mapper。
+它会提供很多通用数据库方法，比如：
+
+selectById(id)
+selectOne(...)
+selectList(...)
+selectPage(...)
+insert(entity)
+updateById(entity)
+deleteById(id)
+
+所以你在 Service 里可以直接写：
+dictTypeMapper.selectById(id);
+dictTypeMapper.insert(dictType);
+dictTypeMapper.updateById(updateObj);
+
+这些方法不是你自己写的，而是从 BaseMapperX<DictTypeDO> 继承来的。
+
+//LambdaQueryWrapperX 是什么？
+  new LambdaQueryWrapperX<DictTypeDO>()
+  它是芋道封装的查询条件构造器。
+  可以理解成：
+  用 Java 代码拼 SQL 条件。
+  它大概率是基于 MyBatis-Plus 的 LambdaQueryWrapper 扩展出来的。
+  普通 SQL 可能是：
+
+  SELECT *
+  FROM system_dict_type
+  WHERE name LIKE '%状态%'
+    AND type LIKE '%sys%'
+    AND status = 0
+  ORDER BY id DESC
+  LIMIT 10;
+
+  这里用 Java 写成：
+  new LambdaQueryWrapperX<DictTypeDO>()
+          .likeIfPresent(DictTypeDO::getName, reqVO.getName())
+          .likeIfPresent(DictTypeDO::getType, reqVO.getType())
+          .eqIfPresent(DictTypeDO::getStatus, reqVO.getStatus())
+          .orderByDesc(DictTypeDO::getId)
+  //likeIfPresent 是什么意思？
+    .likeIfPresent(DictTypeDO::getName, reqVO.getName())
+    意思是：
+    如果 reqVO.getName() 不为空，就添加 name 模糊查询条件；如果为空，就不加这个条件。
+    比如：name = "状态"
+    就生成类似：
+    name LIKE '%状态%'
+    如果： name = null
+    那就不加 name 条件。
+    所以 IfPresent 可以理解为：
+    有值才加条件
+    没值就忽略
+    这很适合分页查询，因为前端查询条件通常不是必填的。
+//eqIfPresent 是什么意思？
+  .eqIfPresent(DictTypeDO::getStatus, reqVO.getStatus())
+  意思是：
+  如果 status 不为空，就添加 status 等于条件。
+  比如：status = 0
+  生成类似：status = 0
+  如果 status 为空，就不按状态筛选。
+//betweenIfPresent 是什么意思？
+  .betweenIfPresent(DictTypeDO::getCreateTime, reqVO.getCreateTime())
+  意思是：
+  如果 createTime 时间范围不为空，就添加创建时间范围查询。
+  你前面看过：
+  private LocalDateTime[] createTime;
+  它一般包含两个时间：
+  createTime[0] = 开始时间
+  createTime[1] = 结束时间
+  如果前端传：
+  2026-05-01 00:00:00
+  2026-05-31 23:59:59
+   就会生成类似 SQL：
+  create_time BETWEEN '2026-05-01 00:00:00'
+                  AND '2026-05-31 23:59:59'
+//orderByDesc(DictTypeDO::getId) 是什么意思？
+  .orderByDesc(DictTypeDO::getId)
+  意思是：
+  按 id 倒序排列。
+  SQL 类似：
+  ORDER BY id DESC
+  通常 id 越大，数据越新。
+  所以倒序之后，新创建的数据会排在前面。

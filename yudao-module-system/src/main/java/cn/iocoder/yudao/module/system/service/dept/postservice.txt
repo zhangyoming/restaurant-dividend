@@ -1,0 +1,127 @@
+//@VisibleForTesting void validateParentDept(Long id, Long parentId) { if (parentId == null || DeptDO.PARENT_ID_ROOT.equals(parentId))
+{ return; } if (Objects.equals(id, parentId))
+ { throw exception(DEPT_PARENT_ERROR); }
+ DeptDO parentDept = deptMapper.selectById(parentId);
+  if (parentDept == null) { throw exception(DEPT_PARENT_NOT_EXITS); }
+  if (id == null) { return; }
+  for (int i = 0; i < Short.MAX_VALUE; i++)
+  { parentId = parentDept.getParentId();
+  if (Objects.equals(id, parentId))
+   { throw exception(DEPT_PARENT_IS_CHILD); }
+   if (parentId == null || DeptDO.PARENT_ID_ROOT.equals(parentId))
+   { break; } parentDept = deptMapper.selectById(parentId);
+  if (parentDept == null) { break; } } }
+三、第一段：父部门为空或根部门，直接通过
+  if (parentId == null || DeptDO.PARENT_ID_ROOT.equals(parentId)) {
+      return;
+  }
+  意思是：
+  如果没有父部门，或者父部门是根部门，就不用继续校验。
+  一般系统里会有一个根部门 ID，比如：
+  DeptDO.PARENT_ID_ROOT = 0
+  也就是说：
+  parentId = 0 表示顶级部门
+  例如：
+  总公司 parentId = 0
+  这种情况是合法的，所以直接 return。
+  四、第二段：不能把自己设置成自己的父部门
+  if (Objects.equals(id, parentId)) {
+      throw exception(DEPT_PARENT_ERROR);
+  }
+  假设你正在修改：
+  技术部 id = 10
+  结果前端传来：
+  parentId = 10
+  这就变成：
+  技术部的父部门 = 技术部自己
+  这是错误的。
+  因为会形成这种关系：
+  技术部
+  └── 技术部
+      └── 技术部
+          └── ...
+  所以代码抛出异常：
+  throw exception(DEPT_PARENT_ERROR);
+  五、第三段：父部门必须存在
+  DeptDO parentDept = deptMapper.selectById(parentId);
+  if (parentDept == null) {
+      throw exception(DEPT_PARENT_NOT_EXITS);
+  }
+  这段意思是：
+  根据 parentId 查询父部门，如果查不到，说明父部门不存在。
+  比如前端传：
+  parentId = 999999
+  但是数据库里没有这个部门。
+  那肯定不能把当前部门挂到一个不存在的父部门下面。
+  所以抛异常：
+  throw exception(DEPT_PARENT_NOT_EXITS);
+  六、第四段：如果是新增，不需要检查环路
+  if (id == null) {
+      return;
+  }
+  新增部门时，当前部门还没有 ID，也不可能已经有子部门。
+  比如你新增一个：
+  财务部
+  它还没进数据库，不可能出现：
+  财务部的子部门又变成财务部的父部门
+  所以新增时只要父部门存在，就可以直接返回。
+  真正需要检查“环路”的是修改部门。
+  七、最难点：为什么要循环检查父级？
+  for (int i = 0; i < Short.MAX_VALUE; i++) {
+      parentId = parentDept.getParentId();
+      if (Objects.equals(id, parentId)) {
+          throw exception(DEPT_PARENT_IS_CHILD);
+      }
+      if (parentId == null || DeptDO.PARENT_ID_ROOT.equals(parentId)) {
+          break;
+      }
+      parentDept = deptMapper.selectById(parentId);
+      if (parentDept == null) {
+          break;
+      }
+  }
+  这段是为了防止 把自己的子部门设置成自己的父部门。、
+  为什么这里有两个 break？
+  1. 找到根部门就结束
+  if (parentId == null || DeptDO.PARENT_ID_ROOT.equals(parentId)) {
+      break;
+  }
+  意思是：
+  如果已经往上找到根部门了，说明这条父级链路是正常的，可以结束检查。
+  比如：
+  C -> B -> A -> 根部门
+  没有找到自己，就说明没有环。
+  2. 父部门查不到也结束
+  parentDept = deptMapper.selectById(parentId);
+  if (parentDept == null) {
+      break;
+  }
+  正常情况下，前面已经校验过父部门存在。
+  但继续往上查父级时，可能遇到历史脏数据。
+  比如：
+  B 的 parentId = 999999
+  但 999999 这个部门不存在。
+  这里就直接 break，避免空指针异常。
+  //parentId 为空或根部门？
+        是 -> 合法，结束
+        否 -> 继续
+
+    parentId 是否等于 id？
+        是 -> 不能把自己设为父部门，报错
+        否 -> 继续
+
+    根据 parentId 查询父部门
+        查不到 -> 父部门不存在，报错
+        查到 -> 继续
+
+    id 是否为空？
+        是 -> 新增场景，不检查环路，结束
+        否 -> 修改场景，继续
+
+    从 parentDept 开始一层层往上查父级
+        如果某一层 parentId == 当前 id
+            -> 说明新父部门是自己的子部门，报错
+        如果查到根部门
+            -> 正常，结束
+        如果中间父部门不存在
+            -> 结束，避免异常

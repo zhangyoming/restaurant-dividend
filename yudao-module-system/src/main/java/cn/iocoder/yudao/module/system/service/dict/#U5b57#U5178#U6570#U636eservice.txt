@@ -1,0 +1,162 @@
+  DictDataServiceImpl
+  //
+  Service 接口里的方法不一定都要被 Controller 调用。
+  因为：
+  Controller 是前端接口入口，Service 是业务能力层。
+  Service 方法除了给 Controller 用，
+  还会给其他 Service、其他模块、缓存、Excel、校验逻辑、定时任务等使用。
+  \\DictDataService 字典数据业务接口，
+  声明了字典数据的新增、修改、删除、批量删除、分页查询、
+  详情查询、按字典类型查询、统计数量、校验字典值是否合法、
+  根据 value 查询、根据 label 解析等能力。
+  //方法八：统计某个字典类型下有多少字典数据
+    long getDictDataCountByDictType(String dictType);
+    它通常被 DictTypeServiceImpl 删除字典类型时调用。
+    比如你要删除字典类型：
+    sys_common_sex
+    但是它下面还有数据：
+    男
+    女
+    未知
+    那就不允许删除。
+    所以删除字典类型前要查：
+    dictDataService.getDictDataCountByDictType("sys_common_sex")
+    如果结果大于 0，说明下面还有字典数据。
+    这就是你前面看到的逻辑：
+    if (dictDataService.getDictDataCountByDictType(dictType.getType()) > 0) {
+        throw exception(DICT_TYPE_HAS_CHILDREN);
+    }
+    意思是：
+    字典类型下面还有子数据，不能删除这个字典类型
+//、方法九：校验多个字典数据是否有效
+  void validateDictDataList(String dictType, Collection<String> values);
+  作用：
+  校验某个字典类型下，一组字典值是否合法。
+  注释里写了无效情况：
+  1. 字典数据不存在
+  2. 字典数据被禁用
+  假设字典类型是：
+  restaurant_dividend_status
+  合法数据有：
+  label	value	status
+  待计算	0	启用
+  待审核	1	启用
+  已发放	2	启用
+  你调用：
+  validateDictDataList("restaurant_dividend_status", List.of("0", "1"));
+  但如果调用：
+  validateDictDataList("restaurant_dividend_status", List.of("999"));
+  因为 999 不存在，就应该报错。
+  如果某个字典值存在，但是被禁用了，也应该报错。
+  这个方法常用于业务保存前校验参数。
+//方法十一：根据 label 解析字典数据
+  DictDataDO parseDictData(String dictType, String label);
+  作用：
+  根据字典类型和字典标签查询字典数据。
+  parseDictData("sys_common_sex", "男")
+  返回：
+  value = 1
+  它和 getDictData(String dictType, String value) 的区别是：
+  方法	根据什么查
+  getDictData(dictType, value)	根据字典值查
+  parseDictData(dictType, label)	根据字典标签查
+  label	value
+  男	1
+  女	2
+  getDictData("sys_common_sex", "1")
+  是用 value=1 查，查到“男”。
+  parseDictData("sys_common_sex", "男")
+  是用 label=男 查，查到 value=1。
+  注释说：
+  从缓存中
+  说明它可能不是每次都查数据库，而是从缓存中快速查。
+//  有些方法是给“字典转换 / 缓存 / Excel”用的
+    DictDataDO getDictData(String dictType, String value);
+    作用是：根据字典类型 + 字典值，查到对应字典数据
+    getDictData("sys_common_status", "0")
+    可能查到：
+    启用
+    这种方法不一定由 Controller 直接调用。
+    它可能被这些地方调用：
+    Excel 导出字典翻译
+    前端字典缓存
+    业务校验
+    数据转换工具
+    还有这个：
+    DictDataDO parseDictData(String dictType, String label);
+    它是根据中文标签反查字典数据。
+    parseDictData("restaurant_cost_type", "房租")
+    可以查到：
+    value = rent
+    这种方法可能用于 Excel 导入。
+    用户 Excel 里写的是：
+    房租
+    系统导入时要转成数据库存储值：
+    rent
+//
+Service 是“业务能力层”，不是“接口列表”
+你现在容易把它理解成：
+Controller 有几个接口
+Service 就应该有几个方法
+但企业项目不是这样。
+更准确的理解是：
+Controller = 前端能访问哪些接口
+Service = 当前业务模块提供哪些能力
+所以 Service 方法数量通常会比 Controller 多。
+例如：
+
+Controller:
+    新增字典数据
+    修改字典数据
+    删除字典数据
+    分页查询字典数据
+Service:
+    新增字典数据
+    修改字典数据
+    删除字典数据
+    分页查询字典数据
+    根据 dictType 查询
+    根据 value 查询
+    根据 label 解析
+    校验字典值是否合法
+    统计某个类型下的数据数量
+Controller 只暴露一部分给前端。
+Service 要满足更多内部业务使用。
+
+//为什么不直接在需要的地方写 Mapper 查询？
+  比如 DictTypeServiceImpl 删除字典类型时，为什么不直接注入 DictDataMapper？
+  而是调用：
+  dictDataService.getDictDataCountByDictType(...)
+  因为这样更符合分层。
+  DictTypeServiceImpl 不应该直接关心字典数据怎么查数据库
+  它只需要问 DictDataService：
+  这个字典类型下面有没有数据？
+  这样代码更清晰：
+  DictTypeService 负责字典类型业务
+  DictDataService 负责字典数据业务
+  如果以后字典数据改成走缓存，或者查询逻辑变复杂，只需要改 DictDataServiceImpl，其他地方不用管。
+
+  //DictDataServiceImpl，负责字典数据的核心业务逻辑：
+  查询、分页、新增、修改、删除、批量删除、统计数量、校验字典类型是否有效、
+  校验字典值是否重复、校验字典值是否存在且启用，
+  以及根据 value 或 label 查询字典数据。
+新增：
+    校验字典类型有效
+    校验 value 唯一
+    ReqVO 转 DO
+    insert
+
+修改：
+    校验数据存在
+    校验字典类型有效
+    校验 value 唯一且不是别人占用
+    ReqVO 转 DO
+    updateById
+
+删除：
+    校验存在
+    deleteById
+
+校验：
+    字典类型必须存在且启用
+    字典数据必须存在且启用

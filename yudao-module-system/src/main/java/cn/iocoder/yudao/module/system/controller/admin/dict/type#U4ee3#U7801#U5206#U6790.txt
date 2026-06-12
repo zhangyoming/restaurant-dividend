@@ -1,0 +1,66 @@
+DictTypeController.java
+//    后台“字典类型管理”的 Controller，提供创建、修改、删除、批量删除、分页查询、详情查询、简单列表、Excel 导出等接口。
+//    它通过 DictTypeService 处理业务，通过 BeanUtils 把数据库对象转换成前端 VO，通过 @PreAuthorize 控制权限，
+//    通过 CommonResult 统一返回结果。
+\\@PreAuthorize("@ss.hasPermission('system:dict:create')")
+调用 ss 这个权限校验对象的 hasPermission 方法
+判断当前用户有没有 system:dict:create 权限
+@ss 项目里自定义的权限校验 Bean
+\\@Valid 对 DictTypeSaveReqVO 里面的字段进行参数校验
+防止脏数据进入业务层
+为什么有些项目不加 @Valid 有些项目把校验写在 Service 里
+\\@Parameter(required = true) 接口文档说明
+真正让 Spring 校验参数必填的 @RequestParam("id") @NotNull
+public CommonResult<Boolean> deleteDictType(@RequestParam("id") @NotNull Long id)
+\\@GetMapping(value = "/get") @GetMapping("/get") 基本等价
+风格问题
+\\前端请求接口
+      ↓
+  @GetMapping / @PostMapping 匹配接口地址
+      ↓
+  @PreAuthorize 校验权限
+      ↓
+  @Valid 校验参数
+      ↓
+  Controller 调用 Service
+      ↓
+  CommonResult.success 返回统一结果
+\\| 注解           | 来源                  | 默认注入方式    |
+  | ------------ | ------------------- | --------- |
+  | `@Resource`  | Java / Jakarta 标准注解 | 先按名称，再按类型 |
+  | `@Autowired` | Spring 提供的注解        | 主要按类型     |
+Spring 会先看变量名，然后去容器里找，如果找到了，就注入，如果按名字找不到，再尝试按类型
+@Autowired Spring 主要会按类型
+\\如果容器里只有一个实现类 二者没区别
+假设一个接口有两个实现类 Spring 会懵 按类型找到了多个
+所以在多个实现类时，@Resource 有时更直观
+@Autowired 怎么解决多个实现类问题？
+@Autowired
+@Qualifier("wechatPayServiceImpl")
+private PayService payService;
+\\你现在看到的是字段注入：
+
+  @Resource
+  private DictTypeService dictTypeService;
+
+  这种写法简单，很多项目都这么写。
+
+  还有一种更推荐的现代写法是构造器注入：
+
+  private final DictTypeService dictTypeService;
+
+  public DictTypeController(DictTypeService dictTypeService) {
+      this.dictTypeService = dictTypeService;
+  }
+
+  如果配合 Lombok，可以写：
+
+  @RequiredArgsConstructor
+  @RestController
+  @RequestMapping("/system/dict-type")
+  public class DictTypeController {
+
+      private final DictTypeService dictTypeService;
+
+  }
+

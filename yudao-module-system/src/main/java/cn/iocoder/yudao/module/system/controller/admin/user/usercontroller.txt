@@ -1,0 +1,123 @@
+//为什么“获得用户分页列表”不用 @RequestBody？
+  代码是：
+  @GetMapping("/page")
+  public CommonResult<PageResult<UserRespVO>> getUserPage(@Valid UserPageReqVO pageReqVO) {
+  }
+  因为这是 GET 查询接口。
+  GET 请求一般用 URL 参数传查询条件，比如：
+  GET /system/user/page?pageNo=1&pageSize=10&username=zhangsan&status=0&deptId=100
+  这些参数会自动封装到：
+  UserPageReqVO pageReqVO
+  也就是说，Spring 会自动做类似这样的事：
+  UserPageReqVO pageReqVO = new UserPageReqVO();
+  pageReqVO.setPageNo(1);
+  pageReqVO.setPageSize(10);
+  pageReqVO.setUsername("zhangsan");
+  pageReqVO.setStatus(0);
+  pageReqVO.setDeptId(100L);
+  所以 GET 查询接口通常不写：
+  @RequestBody
+  因为 @RequestBody 是从 请求体 JSON 里取参数，一般用于 POST、PUT 这种新增/修改接口。
+  你可以这样记：
+  GET 查询：参数通常在 URL 后面，用 ReqVO 接收，不加 @RequestBody
+  POST/PUT 新增修改：参数通常在 JSON 请求体里，要加 @RequestBody
+  //
+  为什么“修改用户状态”不用 @RequestParam？
+  @PutMapping("/update-status")
+  public CommonResult<Boolean> updateUserStatus(@Valid @RequestBody UserUpdateStatusReqVO reqVO) {
+      userService.updateUserStatus(reqVO.getId(), reqVO.getStatus());
+      return success(true);
+  }
+  这个接口虽然 Service 层只需要两个参数：
+  id
+  status
+  但是 Controller 层还是用一个 VO 接收：
+  UserUpdateStatusReqVO reqVO
+  主要原因是：这是一个 修改操作，前端一般用 JSON 请求体提交。
+  请求体可能是：
+  {
+    "id": 1024,
+    "status": 1
+  }
+  所以 Controller 用：
+  @RequestBody UserUpdateStatusReqVO reqVO
+  接收更规范。
+  如果用 @RequestParam，请求会变成：
+    PUT /system/user/update-status?id=1024&status=1
+  也不是不可以，但对于修改操作，企业项目里更常见的是用 JSON 请求体。
+//
+Controller 用 VO 有几个好处。
+
+第一，可以做参数校验。
+第二，接口文档更清楚。Swagger / Knife4j 可以直接展示这个请求体有哪些字段：
+第三，以后扩展方便。比如将来修改状态时，还要传：
+reason：禁用原因
+remark：备注
+那只需要在 VO 里加字段，不需要马上改接口参数结构。
+所以 Controller 用 VO 接收，Service 拆成具体参数调用
+//
+UserConvert.INSTANCE 是什么意思？
+这个一般是 MapStruct 转换器 的写法。
+通常项目里会有类似接口：
+@Mapper
+public interface UserConvert {
+    UserConvert INSTANCE = Mappers.getMapper(UserConvert.class);
+    List<UserSimpleRespVO> convertSimpleList(List<AdminUserDO> list, Map<Long, DeptDO> deptMap);
+}
+INSTANCE 可以理解成：
+UserConvert 的转换器实例
+调用：
+UserConvert.INSTANCE.convertSimpleList(...)
+就是让转换器帮你完成对象转换。
+它和你之前看到的：
+BeanUtils.toBean(...)
+目的类似，都是对象转换。
+区别是：
+BeanUtils.toBean：适合简单字段复制
+UserConvert：适合复杂转换，比如用户 + 部门一起转换
+//
+CommonStatusEnum.ENABLE.getStatus() 是什么意思？
+代码是：
+CommonStatusEnum.ENABLE.getStatus()
+它的意思是：
+获取“启用状态”的状态值。
+CommonStatusEnum 是通用状态枚举，通常表示：
+ENABLE：启用
+DISABLE：禁用
+一般可能是：
+ENABLE.getStatus() = 0
+DISABLE.getStatus() = 1
+所以这句：
+userService.getUserListByStatus(CommonStatusEnum.ENABLE.getStatus());
+可以理解成：
+userService.getUserListByStatus(0);
+也就是：
+只查询启用状态的用户
+为什么不直接写 0？
+因为直接写数字可读性差：
+userService.getUserListByStatus(0);
+别人不一定知道 0 是什么意思。
+用枚举写：
+userService.getUserListByStatus(CommonStatusEnum.ENABLE.getStatus());
+一看就知道：
+查询启用用户
+这就是枚举的好处。
+//
+你现在看到的写法是：
+1. userService 查询用户表
+2. 从用户列表里提取 deptId
+3. deptService 根据 deptId 查询部门表
+4. Controller / Convert 把用户 + 部门拼接成 UserRespVO
+本质上确实是：
+用户表单表查询 + 部门表单表查询 + Java 代码拼接
+你也可以改成：
+Mapper 层直接 user 表 left join dept 表
+
+可以在 Mapper 层多表查询。
+但是芋道这里选择：
+用户表单表分页查询
++
+部门表批量查询
++
+UserConvert 拼接
+是为了分层清晰、复用部门 Service、避免复杂 SQL 扩散，并且它已经避免了 N+1 问题。

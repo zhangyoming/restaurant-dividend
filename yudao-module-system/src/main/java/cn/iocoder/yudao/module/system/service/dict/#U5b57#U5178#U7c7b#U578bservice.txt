@@ -1,0 +1,194 @@
+DictTypeServiceImpl
+//这段代码是：
+
+  字典类型的 Service 实现类，负责字典类型的分页查询、详情查询
+  新增、修改、删除、批量删除和列表查询。
+  它在新增和修改时校验名称和类型是否重复，
+  在删除时校验是否存在以及是否有关联字典数据，
+  最终通过 DictTypeMapper 操作数据库。
+\\为什么字典类型 Service 要用字典数据 Service？
+
+  因为删除字典类型时，要先检查：
+  这个字典类型下面有没有字典数据
+\\@VisibleForTesting 是什么意思？
+  @VisibleForTesting
+  这个注解来自 Guava：
+  import com.google.common.annotations.VisibleForTesting;
+  它的意思是：
+  这个方法本来可以是 private，但为了单元测试可见，所以没有写成 private。
+  比如这些校验方法：
+
+  validateDictTypeNameUnique
+  validateDictTypeUnique
+  validateDictTypeExists
+  正常来说可以写成：
+  private
+  但如果写成 private，测试类不方便直接测它。
+  所以作者用包级别方法，并加：
+  @VisibleForTesting
+  意思是提醒别人：
+  这个方法主要是为了测试才暴露出来，不要随便在外部调用
+  \\这段代码体现了什么企业开发思想？
+
+    这段 Service 代码比 Controller 更能体现业务逻辑。
+
+    它体现了几个重要思想：
+
+    1. Controller 不写业务逻辑，Service 写业务逻辑
+    2. 新增前先校验唯一性
+    3. 修改前先校验数据存在
+    4. 删除前先校验是否有关联子数据
+    5. 删除使用逻辑删除，而不是物理删除
+    6. 请求 VO 转数据库 DO 再保存
+    7. 业务异常统一用错误码抛出
+    8. 校验方法单独抽出来，方便复用和测试
+    //新增：
+          校验唯一性
+          ReqVO 转 DO
+          insert
+          返回 id
+
+      修改：
+          校验存在
+          校验唯一性
+          ReqVO 转 DO
+          updateById
+
+      删除：
+          校验存在
+          校验是否有关联数据
+          逻辑删除
+
+      查询：
+          Controller 传 ReqVO
+          Service 调 Mapper
+          返回 DO / PageResult
+  //“根据 type 查询”，Controller 没调用，为什么 Service 里还有？
+  但是 Service 方法不一定只给 Controller 用，它还可能被：
+
+  其他 Service 调用
+  其他模块调用
+  缓存初始化调用
+  字典数据校验调用
+  系统启动时加载字典调用
+  单元测试调用
+  //
+  校验名称不能重复”这个方法是什么？在哪里引用？
+  它的作用是：判断数据库里是否已经存在同名的字典类型。
+  新增字典类型前，要检查名称是否重复
+  修改字典类型前，也要检查名称是否重复
+//deleted_time 是 null，唯一索引可能失效，是什么意思？
+  假设数据库表有这些字段：
+  id
+  name
+  type
+  deleted_time
+  项目想实现一个规则：
+  未删除的数据里，type 不能重复；但是删除过的数据，不影响以后重新创建同样的 type。
+  于是数据库可能建了一个唯一索引：
+  type + deleted_time 唯一
+  现在假设 deleted_time 是 null。
+
+  有些数据库里，唯一索引对 null 的处理比较特殊：多个 null 可能不会被认为重复。
+
+  比如可能出现这种情况：
+  id	type	deleted_time
+  1	sys_common_sex	null
+  2	sys_common_sex	null
+
+  从业务上看，这两条都是“未删除”的字典类型，type 重复了，不应该允许。
+
+  但是因为 deleted_time 是 null，某些数据库的唯一索引可能不会拦住它。
+
+  所以项目新增时手动设置：
+  dictType.setDeletedTime(LocalDateTimeUtils.EMPTY);
+
+  意思是：未删除的数据不要用 null，统一用一个固定时间表示，比如：
+  这样未删除数据就变成：
+
+  id	type	deleted_time
+  1	sys_common_sex	1970-01-01 00:00:00
+  2	sys_common_sex	1970-01-01 00:00:00
+
+  这时候唯一索引就能判断出重复，不允许插入第二条。
+  删除时：
+  dictTypeMapper.updateToDelete(id, LocalDateTime.now());
+  会把 deleted_time 改成当前时间：
+  id	type	deleted_time
+  1	sys_common_sex	2026-06-01 12:00:00
+  这条记录还在数据库里，但已经表示“被删除了”。
+//
+如果查到的数据 ID 和当前修改 ID 不一样”是什么意思？
+
+继续用表格。
+
+数据库里：
+
+id	name
+1	性别
+2	用户状态
+
+现在你要修改 id=1，把它的名称改成：
+
+用户状态
+
+代码查询：
+
+dictTypeMapper.selectByName("用户状态");
+
+查出来的是：
+
+id	name
+2	用户状态
+
+当前你正在修改的是：
+
+id = 1
+
+但查出来的重复数据是：
+
+id = 2
+
+说明：
+
+你想改成的名称，已经被另一条数据占用了
+
+所以要报错：
+
+throw exception(DICT_TYPE_NAME_DUPLICATE);
+
+这就是“查到的数据 ID 和当前修改 ID 不一样”。
+
+简单判断：
+
+查出来 id == 当前修改 id：是自己，不算重复
+查出来 id != 当前修改 id：是别人，算重复
+//“包级别方法”是什么意思？
+Java 里如果一个方法不写访问修饰符，它就是 包级别访问权限，也叫：
+
+默认访问权限 / package-private
+
+意思是：
+
+只有同一个 package 包下面的类可以访问它。
+
+比如这个类在：
+
+package cn.iocoder.yudao.module.system.service.dict;
+
+那么同一个包下的测试类或其他类可以访问：
+
+validateDictTypeNameUnique(...)
+
+但是不同包里的类不能随便访问。
+如果是 private，测试类很难直接调用它测试。
+private：只有本类能访问
+包级别：同一个包能访问，方便测试
+public：所有地方都能访问，不够安全
+不想完全公开
+但希望测试代码能访问
+这段 Service 的核心就是：新增防重复，
+修改防止改成别人的名称或编码，删除先检查有没有子数据，
+然后通过 deleted_time 做逻辑删除。
+
+

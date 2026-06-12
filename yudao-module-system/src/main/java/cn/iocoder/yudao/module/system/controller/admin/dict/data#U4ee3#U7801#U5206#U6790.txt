@@ -1,0 +1,155 @@
+DictDataPageReqVO.java
+//字典数据分页查询的请求参数对象，继承 PageParam 获得分页能力
+//使用 label、dictType、status 作为筛选条件，
+//使用 @Schema 生成接口文档，使用 @Size 和 @InEnum 做参数校验，
+//使用 Lombok 自动生成 getter/setter。
+\\为什么继承 PageParam？PageParam 是芋道项目封装的分页参数父类
+它里面一般会有：
+private Integer pageNo;
+private Integer pageSize;所以当前类继承 PageParam 后，就自动拥有分页参数
+这个类自己额外定义了 所以完整查询条件是：
+分页参数：pageNo、pageSize,
+筛选条件：label、dictType、status
+\\@Schema 是什么？@Schema 是 OpenAPI 3 / Swagger 文档注解。
+给接口文档看的，告诉 Knife4j / Swagger 这个类或字段是什么意思
+\\@Data 是什么？ 这是 Lombok 注解。
+它会在编译时自动生成：
+getter 方法
+setter 方法
+toString 方法
+equals 方法
+hashCode 方法
+\\@EqualsAndHashCode(callSuper = true) 是什么？
+这也是 Lombok 注解 生成 equals() 和 hashCode() 方法时，把父类字段也算进去
+如果不写 callSuper = true，Lombok 生成 equals 和 hashCode 时可能只考虑当前类自己的字段
+不会考虑父类的
+\\@Size(max = 100) 是什么？
+这是参数校验注解。label 最大长度不能超过 100 个字符。
+如果前端传了一个特别长的 label，比如 200 个字符，
+校验会失败，后端不会继续查询。
+1. 防止无意义的大参数
+2. 防止数据库查询异常
+3. 防止恶意请求
+4. 保持字段长度和数据库字段一致
+\\为什么不用普通 @NotNull？
+因为这是分页查询条件。
+前端可以只传：
+pageNo=1&pageSize=10
+不传：
+label
+dictType
+status
+查询 VO 的常见写法：
+可以不传
+但传了就必须合法
+
+DictDataRespVO
+//字典数据的响应 VO，主要用于后端把字典数据返回给前端，
+//同时也支持 Excel 导出。@Schema 用于接口文档，
+//@Data 自动生成 getter/setter，
+//@ExcelIgnoreUnannotated 表示只导出标注了 @ExcelProperty 的字段，
+//@DictFormat + DictConvert 用于把状态值转换成字典中文显示。
+\\@ExcelProperty(value = "状态", converter = DictConvert.class)
+这一列叫“状态”
+并且使用 DictConvert 转换器进行转换
+因为数据库里存的可能是：0 1
+但是 Excel 里不希望看到：状态 0 1
+而是希望看到：状态 启用 禁用
+所以要用 DictConvert 把数字转换成中文标签。
+\\@DictFormat(DictTypeConstants.COMMON_STATUS)
+这个注解告诉 DictConvert：
+你要按照哪个字典类型来翻译这个字段。
+这里用的是：
+DictTypeConstants.COMMON_STATUS
+它应该代表通用状态字典。
+比如：COMMON_STATUS = common_status
+实际名字要看 DictTypeConstants 源码。
+转换过程大概是：
+status = 0
+    ↓
+@DictFormat(COMMON_STATUS)
+    ↓
+去通用状态字典里查 0 对应什么
+    ↓
+导出 Excel 显示“启用”
+所以这三个注解配合起来，是为了让 Excel 导出更友好。
+\\为什么有些字段有 @ExcelProperty，有些没有？
+因为这个类同时承担两个作用：
+1. 返回给前端展示
+2. 导出 Excel
+但不是所有返回给前端的字段都需要导出。
+比如前端可能需要：
+colorType
+cssClass
+createTime
+remark
+但是 Excel 可能只想导出核心字段：
+字典编码
+字典排序
+字典标签
+字典键值
+字典类型
+状态
+由于类上加了：
+@ExcelIgnoreUnannotated
+所以只有加了：@ExcelProperty的字段才会导出。
+查询数据库列表
+    ↓
+DO 转 RespVO
+    ↓
+根据 @ExcelProperty 生成 Excel 表头和数据
+    ↓
+根据 @DictFormat + DictConvert 转换状态
+    ↓
+浏览器下载 Excel
+
+DictDataSaveReqVO
+//字典数据新增 / 修改请求对象，用来接收前端传来的保存参数
+//它通过 @Schema 生成接口文档，通过 @Data 自动生成 getter/setter，
+//通过 @NotNull、@NotBlank、@Size、@InEnum 做参数校验，
+//保证写入数据库的数据合法。
+
+\\为什么 id 没有加 @NotNull？
+因为这个类同时用于 新增 和 修改。
+新增时：id 不需要前端传
+因为新增数据的 ID 通常由数据库自动生成。
+修改时：id 必须传
+因为后端需要知道你要修改哪一条数据。
+所以这个类本身没有简单地写：
+@NotNull
+private Long id;
+具体修改时是否校验 ID，一般会在 Service 层或分组校验里处理。
+\\为什么这个类里面有很多校验注解？
+因为这是 新增 / 修改请求对象。
+新增和修改会真正改变数据库，所以必须严格校验。
+比如：
+@NotBlank(message = "字典标签不能为空")
+可以防止前端传空标签。
+@Size(max = 100)
+可以防止字段太长，超过数据库字段长度。
+@InEnum(CommonStatusEnum.class)
+可以防止传非法状态。
+所以你可以记住：
+SaveReqVO 一般校验更严格
+PageReqVO 一般校验较宽松
+RespVO 一般不做参数校验
+原因是：
+VO 类型	是否需要严格校验
+SaveReqVO	需要，因为要写数据库
+PageReqVO	需要部分校验，因为只是查询
+RespVO	一般不需要，因为是返回给前端
+SimpleRespVO	一般不需要，因为是返回给前端
+//
+为什么 SaveReqVO 没有 createTime？
+因为 createTime 通常不是前端传的。
+创建时间一般由后端自动生成。
+比如数据库实体类可能继承了 BaseDO，里面自动有：
+private LocalDateTime createTime;
+private LocalDateTime updateTime;
+新增时由系统自动填充。
+所以前端不应该传：
+{
+  "createTime": "2026-05-31 12:00:00"
+}
+这类字段由后端控制更安全。
+

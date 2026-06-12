@@ -1,0 +1,5 @@
+### 请求 /menu/list 接口 => 成功
+#这是接口测试文件，类似 Postman，但可以直接在 IDEA 里运行。
+GET {{baseUrl}}/system/dict-data/list-all-simple
+Authorization: Bearer {{token}}
+tenant-id: {{adminTenantId}}
