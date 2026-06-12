@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <parent>
+        <!--        表示当前模块属于父工程-->
+        <groupId>cn.iocoder.boot</groupId>
+        <artifactId>zym-restaurant</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>zym-module-restaurant</artifactId>
+    <packaging>jar</packaging>
+
+    <name>${project.artifactId}</name>
+    <description>
+        restaurant 餐饮分红模块，主要负责门店、股东、持股关系、营业收入、成本支出、
+        利润核算、分红规则、分红账期、分红明细、分红审批、经营看板等业务。
+    </description>
+
+    <dependencies>
+        <!-- 依赖 system 模块：复用用户、部门、岗位、角色权限、字典、租户等能力 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-module-system</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- 依赖 infra 模块：复用文件、定时任务、代码生成、基础设施等能力 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-module-infra</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- 业务组件：多租户 -->
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-spring-boot-starter-biz-tenant</artifactId>-->
+<!--        </dependency>-->
+
+        <!-- 业务组件：数据权限 -->
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-spring-boot-starter-biz-data-permission</artifactId>-->
+<!--        </dependency>-->
+
+        <!-- Web 安全相关：权限校验 @PreAuthorize -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- 参数校验：@Valid、@NotNull、@NotBlank 等 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- DB 相关：MyBatis-Plus、BaseMapperX、LambdaQueryWrapperX -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-mybatis</artifactId>
+        </dependency>
+
+        <!-- Redis：缓存、分布式锁、经营看板缓存 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-redis</artifactId>
+        </dependency>
+
+        <!-- Job 定时任务：自动生成月度分红账单 -->
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-spring-boot-starter-job</artifactId>-->
+<!--        </dependency>-->
+
+        <!-- MQ 消息队列：分红生成后异步通知、报表刷新 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-mq</artifactId>
+        </dependency>
+
+        <!-- Excel：营业额导入、成本导入、分红明细导出 -->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-excel</artifactId>
+        </dependency>
+
+        <!-- WebSocket：后期做经营看板实时推送时使用 -->
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-spring-boot-starter-websocket</artifactId>-->
+<!--        </dependency>-->
+    </dependencies>
+
+</project>
