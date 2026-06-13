@@ -36,16 +36,16 @@
         </dependency>
 
         <!-- 业务组件：多租户 -->
-<!--        <dependency>-->
-<!--            <groupId>cn.iocoder.boot</groupId>-->
-<!--            <artifactId>yudao-spring-boot-starter-biz-tenant</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-biz-tenant</artifactId>
+        </dependency>
 
         <!-- 业务组件：数据权限 -->
-<!--        <dependency>-->
-<!--            <groupId>cn.iocoder.boot</groupId>-->
-<!--            <artifactId>yudao-spring-boot-starter-biz-data-permission</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-biz-data-permission</artifactId>
+        </dependency>
 
         <!-- Web 安全相关：权限校验 @PreAuthorize -->
         <dependency>
@@ -72,15 +72,20 @@
         </dependency>
 
         <!-- Job 定时任务：自动生成月度分红账单 -->
-<!--        <dependency>-->
-<!--            <groupId>cn.iocoder.boot</groupId>-->
-<!--            <artifactId>yudao-spring-boot-starter-job</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-job</artifactId>
+        </dependency>
 
         <!-- MQ 消息队列：分红生成后异步通知、报表刷新 -->
         <dependency>
             <groupId>cn.iocoder.boot</groupId>
             <artifactId>yudao-spring-boot-starter-mq</artifactId>
+        </dependency>
+        <!-- RocketMQ：因为 yudao-spring-boot-starter-mq 里的 RocketMQ 是 optional，需要业务模块显式引入 -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
         </dependency>
 
         <!-- Excel：营业额导入、成本导入、分红明细导出 -->
@@ -90,10 +95,10 @@
         </dependency>
 
         <!-- WebSocket：后期做经营看板实时推送时使用 -->
-<!--        <dependency>-->
-<!--            <groupId>cn.iocoder.boot</groupId>-->
-<!--            <artifactId>yudao-spring-boot-starter-websocket</artifactId>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-spring-boot-starter-websocket</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
