@@ -1,0 +1,22 @@
+CREATE TABLE restaurant_shareholder (
+                                        id BIGINT NOT NULL AUTO_INCREMENT COMMENT '股东编号',
+                                        user_id BIGINT DEFAULT NULL COMMENT '关联系统用户编号',
+                                        dept_id BIGINT DEFAULT NULL COMMENT '部门编号',
+                                        name VARCHAR(100) NOT NULL COMMENT '股东姓名',
+                                        phone VARCHAR(30) NOT NULL COMMENT '手机号',
+                                        id_card VARCHAR(30) DEFAULT NULL COMMENT '身份证号',
+                                        bank_name VARCHAR(100) DEFAULT NULL COMMENT '开户行',
+                                        bank_account VARCHAR(64) DEFAULT NULL COMMENT '银行卡号',
+                                        status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0开启 1禁用',
+                                        remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+                                        creator VARCHAR(64) DEFAULT '' COMMENT '创建者',
+                                        create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                        updater VARCHAR(64) DEFAULT '' COMMENT '更新者',
+                                        update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                        deleted BIT(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
+                                        tenant_id BIGINT NOT NULL DEFAULT 0 COMMENT '租户编号',
+                                        PRIMARY KEY (id),
+                                        UNIQUE KEY uk_phone_tenant (phone, tenant_id),
+                                        UNIQUE KEY uk_user_id_tenant (user_id, tenant_id),
+                                        KEY idx_dept_id (dept_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='餐饮股东表';

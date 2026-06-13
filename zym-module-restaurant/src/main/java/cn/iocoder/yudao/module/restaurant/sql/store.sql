@@ -1,0 +1,20 @@
+CREATE TABLE restaurant_store (
+                                  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '门店编号',
+                                  name VARCHAR(100) NOT NULL COMMENT '门店名称',
+                                  code VARCHAR(50) NOT NULL COMMENT '门店编码',
+                                  dept_id BIGINT DEFAULT NULL COMMENT '关联部门编号',
+                                  manager_user_id BIGINT DEFAULT NULL COMMENT '负责人用户编号',
+                                  address VARCHAR(255) DEFAULT NULL COMMENT '门店地址',
+                                  phone VARCHAR(30) DEFAULT NULL COMMENT '联系电话',
+                                  open_date DATE DEFAULT NULL COMMENT '开业日期',
+                                  status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0开启 1禁用',
+                                  remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+                                  creator VARCHAR(64) DEFAULT '' COMMENT '创建者',
+                                  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                  updater VARCHAR(64) DEFAULT '' COMMENT '更新者',
+                                  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                  deleted BIT(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
+                                  tenant_id BIGINT NOT NULL DEFAULT 0 COMMENT '租户编号',
+                                  PRIMARY KEY (id),
+                                  UNIQUE KEY uk_code_tenant (code, tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='餐饮门店表';
